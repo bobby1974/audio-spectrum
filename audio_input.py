@@ -40,7 +40,7 @@ class DisplaySignal():
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
-        self.scope_plot = self.window.addPlot(title="Updating plot")
+        self.scope_plot = self.window.addPlot(title="Spectrum domain Analysis")
         self.scope_curve = self.scope_plot.plot(pen='y')
         # data = np.random.normal(size=(10,1000))
         self.scope_plot.setXRange(0, 1024)
@@ -49,9 +49,11 @@ class DisplaySignal():
 
         self.window.nextRow()
 
-        self.spectrum_plot = self.window.addPlot(title="Updating plot")
+        self.spectrum_plot = self.window.addPlot(title="Time domain Analysis")
         self.spectrum_curve = self.spectrum_plot.plot(pen='y')
         # data = np.random.normal(size=(10,1000))
+        self.scope_plot.setXRange(0, 1024)
+        self.scope_plot.setYRange(-1500, 1500)
         self.spectrum_plot.showGrid(x=True, y=True)
 
         self.audio_capture = AudioCapture(self)
