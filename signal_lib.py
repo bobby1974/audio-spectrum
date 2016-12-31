@@ -19,8 +19,7 @@
 import numpy as np
 import scipy.signal as signal
 from scipy      import fftpack
-from filterpara import firFilter
-
+import configure as cfg
 
 class CosineCarrier(object):
     def __init__(self):
@@ -29,9 +28,9 @@ class CosineCarrier(object):
     def set_phase(self, phase):
         self.n = phase
 
-    def cosine_carrier(self, fc, fs, fft_size):
+    def cosine_carrier(self, fc, fs, fft_size, amplitude):
         "fc:carrier freq, fs:sample rate"
-        cosineResult = np.arange(0, cfg.FFT_SIZE, 1.0)
+        cosineResult = np.arange(0, fft_size, 1.0)
         n = self.n
 
         for i in range(fft_size):
@@ -40,7 +39,7 @@ class CosineCarrier(object):
             if angle >= 2. * np.pi * fc:
                 n = 0
 
-            cosineData = np.cos(angle)
+            cosineData = amplitude*np.cos(angle)
 
             n += 1
 
@@ -55,8 +54,8 @@ class SineCarrier(object):
     def __init__(self):
         self.n = 0
 
-    def sine_carrier(self, fc, fs, fft_size):
-        sineResult = np.arange(0, cfg.FFT_SIZE, 1.0)
+    def sine_carrier(self, fc, fs, fft_size, amplitude):
+        sineResult = np.arange(0, fft_size, 1.0)
 
         n = self.n
 
@@ -66,7 +65,7 @@ class SineCarrier(object):
             if angle >= 2. * np.pi * fc:
                 n = 0
 
-            sineData = np.sin(angle)
+            sineData = amplitude * np.sin(angle)
 
             n += 1
 
@@ -83,7 +82,7 @@ class ExpCarrier(object):
 
     "flag:-j or j"
 
-    def exp_carrier(self, fc, fs, fft_size):
+    def exp_carrier(self, fc, fs, fft_size, amplitude):
         expResult = np.arange(0, fft_size, 1.0, dtype=np.complex64)
 
         n = self.n
@@ -91,7 +90,7 @@ class ExpCarrier(object):
         for i in range(fft_size):
             angle = -1.0j * 2. * np.pi * fc * n / fs
 
-            expData = np.exp(angle)
+            expData = amplitude * np.exp(angle)
 
             n += 1
 

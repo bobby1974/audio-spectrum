@@ -1,16 +1,32 @@
+# -*- coding: utf-8 -*-
+# |----------------------------------------------------------------------| #
+# | Copyright (C) Bobby, BH7PRM, 2016                                    | #
+# |                                                                      | #
+# | This program is free software: you can redistribute it and/or modify | #
+# | it under the terms of the GNU General Public License as published by | #
+# | the Free Software Foundation, either version 3 of the License, or    | #
+# | any later version.                                                   | #
+# |                                                                      | #
+# | This program is distributed in the hope that it will be useful,      | #
+# | but WITHOUT ANY WARRANTY; without even the implied warranty of       | #
+# | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the        | #
+# | GNU General Public License for more details.                         | #
+# |                                                                      | #
+# | You should have received a copy of the GNU General Public License    | #
+# | along with this program.  If not, see <http://www.gnu.org/licenses/>.| #
+# |----------------------------------------------------------------------| #
+
 import threading
 import pyaudio
 import sys
-from pyqtgraph.Qt import QtGui, QtCore
 import numpy as np
 import pyqtgraph as pg
+import configure as cfg
 import pylab as plt
+import signal_lib as signal_lib
 
-CHUNK = 1024
-PYAUDIO_FORMAT_INT16 = pyaudio.paInt16
-CHANNELS = 1
-SOUND_CARD_RATE = 8000
-RECORD_SECONDS = 5
+from pyqtgraph.Qt import QtGui, QtCore
+
 
 class SlotCommunicate(QtCore.QObject):
     drawSlot = QtCore.pyqtSignal(object)
@@ -23,15 +39,20 @@ class DisplaySignal():
 
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
+
+        self.scope_plot = self.window.addPlot(title="Updating plot")
+        self.scope_curve = self.scope_plot.plot(pen='y')
+        # data = np.random.normal(size=(10,1000))
+        self.scope_plot.setXRange(0, 1024)
+        self.scope_plot.setYRange(-1500, 1500)
+        self.scope_plot.showGrid(x=True, y=True)
+
+        self.window.nextRow()
+
         self.spectrum_plot = self.window.addPlot(title="Updating plot")
         self.spectrum_curve = self.spectrum_plot.plot(pen='y')
         # data = np.random.normal(size=(10,1000))
         self.spectrum_plot.showGrid(x=True, y=True)
-
-        self.spectrum_plot.setXRange(0, 1024)
-        self.spectrum_plot.setYRange(-1500, 1500)
-
-        self.window.nextRow()
 
         self.audio_capture = AudioCapture(self)
         self.audio_capture.start()
@@ -39,10 +60,13 @@ class DisplaySignal():
         "communication between capture and display."
         self.audio_capture.c.drawSlot.connect(self.update)
 
+        ############################
+        self.cosine = signal_lib.CosineCarrier()
+
     def update(self, data):
         global ptr
 
-        self.spectrum_curve.setData(data*5)
+        self.spectrum_curve.setData(data)
 
         if ptr == 0:
 
@@ -68,27 +92,25 @@ class AudioCapture(threading.Thread):
         self.c = SlotCommunicate()
 
         try:
-            self.in_stream = self.p.open(format=PYAUDIO_FORMAT_INT16,
-                channels=CHANNELS,
-                rate=SOUND_CARD_RATE,
-                input=True,
-                frames_per_buffer=CHUNK)
+            self.in_stream = self.p.open(format=cfg.PYAUDIO_FORMAT_INT16,
+                channels = cfg.SOUND_CARD_CHANNELS,
+                rate = cfg.SOUND_CARD_RATE,
+                input= True,
+                frames_per_buffer = cfg.SOUND_CARD_CHUNK)
 
-            self.out_stream = self.p.open(format=PYAUDIO_FORMAT_INT16, channels=CHANNELS,
-                                         rate=SOUND_CARD_RATE,
-                                         output=True)
+            self.out_stream = self.p.open(format = cfg.PYAUDIO_FORMAT_INT16, channels = cfg.SOUND_CARD_CHANNELS,
+                                         rate = cfg.SOUND_CARD_RATE,
+                                         output = True)
 
-            print "open sound card succ. Sound card rate is: ", SOUND_CARD_RATE
+            print "open sound card succ. Sound card rate is: ", cfg.SOUND_CARD_RATE
         except:
             print "open sound card failure!"
-
-        print SOUND_CARD_RATE / CHUNK * RECORD_SECONDS
-
 
     def run(self):
         #for i in range(0, int(SOUND_CARD_RATE / CHUNK * RECORD_SECONDS)):
         while True:
-            self.audio_data = self.in_stream.read(CHUNK)
+            self.audio_data = self.in_stream.read(cfg.SOUND_CARD_CHUNK)
+
             self.audio_data = np.fromstring(self.audio_data, dtype = np.int16)
 
             self.c.drawSlot.emit(self.audio_data)
