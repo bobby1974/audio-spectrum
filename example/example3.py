@@ -23,7 +23,7 @@ import pylab as plt
 t  = np.arange(0.0, 5.0, 0.02)
 
 fc1= 1
-fc2= 2
+fc2= 10
 
 y1 = np.sin(2.*np.pi*fc1*t)
 y2 = np.sin(2.*np.pi*fc2*t)

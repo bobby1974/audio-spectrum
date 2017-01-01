@@ -40,6 +40,6 @@ plt.plot(x,y2,label="$sin(x)$",color="blue",linewidth=1)
 
 plt.xlabel('times')
 plt.ylabel('amplitude')
-plt.legend(loc='left', shadow=True, fontsize='x-large')
+plt.legend(loc='upper right', shadow=True, fontsize='x-large')
 plt.grid()
 plt.show()
