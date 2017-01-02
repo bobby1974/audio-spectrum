@@ -131,6 +131,51 @@ class AudioCapture(threading.Thread):
 
         self.p.terminate()
 
+def calculate_n_FFT(iqDataInput, fft_length, fft_counter, hanning_window, fft_type):
+    i        = 0
+    fft_temp = 0
+    power    = 0
+
+    for i in range(fft_counter):
+        "对I/Q复数数据做FFT变换,numpy.fft.fft(a, n=None, axis=-1)[source]"
+        "The values in the result follow so-called “standard” order: If A = fft(a, n), then A[0] contains"
+        "the zero-frequency term (the mean of the signal), which is always purely real for real inputs. "
+        "Then A[1:n/2] contains the positive-frequency terms, and A[n/2+1:] contains the negative-frequency "
+        "terms, in order of decreasingly negative frequency. For an even number of input points, A[n/2] represents"
+        " both positive and negative Nyquist frequency, and is also purely real for real input. For an odd number "
+        "of input points, A[(n-1)/2] contains the largest positive frequency, while A[(n+1)/2] contains the largest"
+        "negative frequency. The routine np.fft.fftshift(A) shifts transforms and their frequencies to put the "
+        "zero-frequency components in the middle, and np.fft.ifftshift(A) undoes that shift."
+        iqDataCmplx = iqDataInput[i * fft_length:(i + 1) * fft_length]
+
+        "apply hanning window for FFT"
+        power = np.multiply(iqDataCmplx, hanning_window)
+
+        if fft_type == cfg.FFT_COMPLEX_TYPE:
+            power = np.fft.fft(power)
+
+            power = np.fft.fftshift(power)
+        elif fft_type == cfg.FFT_REAL_TYPE:
+            power = np.fft.rfft(power)
+
+        power = np.abs(power)
+
+        "average calculate for FFT to get better result."
+        fft_temp = np.add(fft_temp, power)
+
+    "每次读入的rtl buffer个数据，使用FFT_AVERAGE个数据计算FFT"
+    fft_temp = fft_temp / fft_counter
+
+    "When the input a is a time-domain signal and A = fft(a), np.abs(A) is its amplitude spectrum and np.abs(A)**2"
+    "is its power spectrum. The phase spectrum is obtained by np.angle(A)."
+
+    "after average, it can be calculate for power spectrum"
+    power_spectrum = (fft_temp * 1.0) / fft_length
+
+    power_spectrum = 20 * np.log10(power_spectrum)
+
+    return power_spectrum
+
 
 if __name__ == '__main__':
 
