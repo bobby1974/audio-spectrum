@@ -20,17 +20,33 @@ import numpy as np
 
 import pylab as plt
 
-t  = np.arange(0.0, 5.0, 0.02)
+fs = 64. #sampling frequency
+t  = np.arange(0, 2.0, 1/fs) #2 seconds sampling data
+FFT_SIZE = 16
 
-fc= 1
+fc = 4
+unit = fs/FFT_SIZE
 
-y1 = np.sin(2.*np.pi*fc*t)
+x = np.sin(2.*np.pi*fc*t)
+x_sample = x[:FFT_SIZE]
 
-plt.plot(t,y1, 'bo')
+y_fft = np.fft.fft(x_sample) / FFT_SIZE
 
-plt.plot(t,y1,label="$sin(x)$",color="blue",linewidth=2)
+freq  = np.fft.fftfreq(x_sample.shape[-1])*fs
 
-plt.xlabel('times')
+fft_amp = np.abs(y_fft[:FFT_SIZE/2])
+#fft_real = 20*np.log10(np.clip(np.abs(fft_real), 1e-20, 1e100))
+
+freq = freq[:FFT_SIZE/2]
+print freq
+print fft_amp
+
+plt.stem(freq, fft_amp, '-.')
+
+#plt.plot(freq, fft_real, 'bo')
+#plt.plot(freq, fft_real, label="$fft$",color="blue",linewidth=2)
+
+plt.xlabel('Hz')
 plt.ylabel('amplitude')
 plt.legend(loc='upper right', shadow=True, fontsize='x-large')
 plt.grid()
