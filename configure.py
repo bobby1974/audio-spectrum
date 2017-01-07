@@ -20,8 +20,13 @@ import pyaudio
 from pyqtgraph.Qt import QtGui, QtCore
 import numpy as np
 
-SOUND_CARD_CHUNK     = 1024
+FFT_SIZE             = 2048
+FFT_COMPLEX_TYPE     = 0
+FFT_REAL_TYPE        = 1
+
+SOUND_CARD_CHUNK     = FFT_SIZE
 PYAUDIO_FORMAT_INT16 = pyaudio.paInt16
 SOUND_CARD_CHANNELS  = 1
-SOUND_CARD_RATE      = 8000
+SOUND_CARD_RATE      = 16000
 RECORD_SECONDS       = 5
+

@@ -40,7 +40,7 @@ class DisplaySignal():
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
-        self.scope_plot = self.window.addPlot(title="Spectrum domain Analysis")
+        self.scope_plot = self.window.addPlot(title="Time domain Analysis")
         self.scope_curve = self.scope_plot.plot(pen='y')
         # data = np.random.normal(size=(10,1000))
         self.scope_plot.setXRange(0, 1024)
@@ -49,26 +49,91 @@ class DisplaySignal():
 
         self.window.nextRow()
 
-        self.spectrum_plot = self.window.addPlot(title="Time domain Analysis")
+        self.low_freq  = 0
+        self.high_freq = cfg.SOUND_CARD_RATE/2.
+
+        self.spectrum_plot = self.window.addPlot(title="Spectrum domain Analysis")
         self.spectrum_curve = self.spectrum_plot.plot(pen='y')
         # data = np.random.normal(size=(10,1000))
-        self.scope_plot.setXRange(0, 1024)
-        self.scope_plot.setYRange(-1500, 1500)
+        self.spectrum_plot.setXRange(self.low_freq, self.high_freq)
+        self.spectrum_plot.setYRange(0, -80)
         self.spectrum_plot.showGrid(x=True, y=True)
 
         self.audio_capture = AudioCapture(self)
         self.audio_capture.start()
+
+        self.fft_data = np.zeros(cfg.SOUND_CARD_CHUNK)
+        self.hanning_window = np.hanning(cfg.FFT_SIZE)
 
         "communication between capture and display."
         self.audio_capture.c.drawSlot.connect(self.update)
 
         ############################
         self.cosine = signal_lib.CosineCarrier()
+    #__init__()
+
+    def calculate_n_FFT(self, iqDataInput, fft_length, fft_counter, hanning_window, fft_type):
+        i = 0
+        fft_temp = 0
+        power = 0
+
+        for i in range(fft_counter):
+            "对I/Q复数数据做FFT变换,numpy.fft.fft(a, n=None, axis=-1)[source]"
+            "The values in the result follow so-called “standard” order: If A = fft(a, n), then A[0] contains"
+            "the zero-frequency term (the mean of the signal), which is always purely real for real inputs. "
+            "Then A[1:n/2] contains the positive-frequency terms, and A[n/2+1:] contains the negative-frequency "
+            "terms, in order of decreasingly negative frequency. For an even number of input points, A[n/2] represents"
+            " both positive and negative Nyquist frequency, and is also purely real for real input. For an odd number "
+            "of input points, A[(n-1)/2] contains the largest positive frequency, while A[(n+1)/2] contains the largest"
+            "negative frequency. The routine np.fft.fftshift(A) shifts transforms and their frequencies to put the "
+            "zero-frequency components in the middle, and np.fft.ifftshift(A) undoes that shift."
+            iqDataCmplx = iqDataInput[i * fft_length:(i + 1) * fft_length]
+
+            "apply hanning window for FFT"
+            power = np.multiply(iqDataCmplx, hanning_window)
+
+            if fft_type == cfg.FFT_COMPLEX_TYPE:
+                power = np.fft.fft(power)
+
+                power = np.fft.fftshift(power)
+            elif fft_type == cfg.FFT_REAL_TYPE:
+                power = np.fft.rfft(power)
+
+            power = np.abs(power)
+
+            "average calculate for FFT to get better result."
+            fft_temp = np.add(fft_temp, power)
+
+        "每次读入的buffer个数据，使用FFT_AVERAGE个数据计算FFT"
+        fft_temp = fft_temp / fft_counter
+
+        "When the input a is a time-domain signal and A = fft(a), np.abs(A) is its amplitude spectrum and np.abs(A)**2"
+        "is its power spectrum. The phase spectrum is obtained by np.angle(A)."
+
+        "after average, it can be calculate for power spectrum"
+        power_spectrum = (fft_temp * 1.0) / fft_length
+
+        power_spectrum = 20 * np.log10(power_spectrum)
+
+        return power_spectrum
+    #calculate_n_FFT()
 
     def update(self, data):
         global ptr
 
-        self.spectrum_curve.setData(data)
+        self.scope_curve.setData(data*1.5)
+
+        self.fft_data = self.calculate_n_FFT(data, cfg.FFT_SIZE, 1,
+                                              self.hanning_window, cfg.FFT_REAL_TYPE)
+        self.fft_data -= 30
+
+        self.fft_data = np.clip(self.fft_data, -80, 0)
+
+        fftBinSeq = np.fft.rfftfreq(cfg.FFT_SIZE)
+
+        x = self.low_freq + fftBinSeq * (self.high_freq - self.low_freq) * 2  # must multiply by two for it is fs
+
+        self.spectrum_curve.setData(x, self.fft_data)
 
         if ptr == 0:
 
@@ -77,6 +142,7 @@ class DisplaySignal():
         # timer = QtCore.QTimer()
         # timer.timeout.connect(update)
         # timer.start(50)
+#DisplaySignal()
 
 class AudioCapture(threading.Thread):
     def __init__(self, displaySignal):
@@ -130,52 +196,6 @@ class AudioCapture(threading.Thread):
         self.out_stream.close()
 
         self.p.terminate()
-
-def calculate_n_FFT(iqDataInput, fft_length, fft_counter, hanning_window, fft_type):
-    i        = 0
-    fft_temp = 0
-    power    = 0
-
-    for i in range(fft_counter):
-        "对I/Q复数数据做FFT变换,numpy.fft.fft(a, n=None, axis=-1)[source]"
-        "The values in the result follow so-called “standard” order: If A = fft(a, n), then A[0] contains"
-        "the zero-frequency term (the mean of the signal), which is always purely real for real inputs. "
-        "Then A[1:n/2] contains the positive-frequency terms, and A[n/2+1:] contains the negative-frequency "
-        "terms, in order of decreasingly negative frequency. For an even number of input points, A[n/2] represents"
-        " both positive and negative Nyquist frequency, and is also purely real for real input. For an odd number "
-        "of input points, A[(n-1)/2] contains the largest positive frequency, while A[(n+1)/2] contains the largest"
-        "negative frequency. The routine np.fft.fftshift(A) shifts transforms and their frequencies to put the "
-        "zero-frequency components in the middle, and np.fft.ifftshift(A) undoes that shift."
-        iqDataCmplx = iqDataInput[i * fft_length:(i + 1) * fft_length]
-
-        "apply hanning window for FFT"
-        power = np.multiply(iqDataCmplx, hanning_window)
-
-        if fft_type == cfg.FFT_COMPLEX_TYPE:
-            power = np.fft.fft(power)
-
-            power = np.fft.fftshift(power)
-        elif fft_type == cfg.FFT_REAL_TYPE:
-            power = np.fft.rfft(power)
-
-        power = np.abs(power)
-
-        "average calculate for FFT to get better result."
-        fft_temp = np.add(fft_temp, power)
-
-    "每次读入的rtl buffer个数据，使用FFT_AVERAGE个数据计算FFT"
-    fft_temp = fft_temp / fft_counter
-
-    "When the input a is a time-domain signal and A = fft(a), np.abs(A) is its amplitude spectrum and np.abs(A)**2"
-    "is its power spectrum. The phase spectrum is obtained by np.angle(A)."
-
-    "after average, it can be calculate for power spectrum"
-    power_spectrum = (fft_temp * 1.0) / fft_length
-
-    power_spectrum = 20 * np.log10(power_spectrum)
-
-    return power_spectrum
-
 
 if __name__ == '__main__':
 
